@@ -15,40 +15,33 @@ headers = {
 
 base_URL = "https://api.themoviedb.org/3/"
 
-
-
 def get_person_id(query):
     endpoint_URL = f"{base_URL}search/person?query={query}"
     response = requests.get(endpoint_URL, headers=headers)
     json_response = response.json()
     df = pd.json_normalize(json_response["results"])
-    return df[["name","id","profile_path","popularity"]]
+    df = df[["name","id","profile_path","popularity"]]
+    return df["id"].values[0]
 
-# df = get_person_id("ana")
-
-# print(df)
-
-
-
-
-
-
-def get_response(id):
+def get_person_data(id):
     endpoint_URL = f"{base_URL}person/{id}?append_to_response=external_ids,movie_credits"
     response = requests.get(endpoint_URL, headers=headers)
-    json_response = response.json()
-    external_ids = json_response["external_ids"]
+    json_response =response.json()
     movie_credits = json_response["movie_credits"]["cast"]
-    return json_response, external_ids, movie_credits
+    external_ids = json_response["external_ids"]
+    return pd.json_normalize(json_response), pd.json_normalize(external_ids),pd.json_normalize(movie_credits)
+
+def run(query):
+    df, df_external, df_movie_credits = get_person_data(
+        get_person_id(query)
+        )
+    return df, df_external,df_movie_credits
+    
+    # print(df_external)
+
+# df_= run("ana de armas")
 
 
-
-def create_df(id):
-    data, external_ids, movie_credits = get_response(id)
-    df = pd.json_normalize(data)
-    df_external_ids = pd.json_normalize(external_ids)
-    df_movie_credits = pd.json_normalize(movie_credits)
-    return df, df_external_ids, df_movie_credits
 
 class Person_Details:
 
@@ -67,9 +60,9 @@ class Person_Details:
             gender = "Not Specified"
         return gender
     
-    def age_format(self, birthdayUSA):
-        birthdayUK = datetime.strptime(birthdayUSA, '%Y-%m-%d').strftime('%d-%m-%Y')
-        return birthdayUK
+    # def age_format(self, birthdayUSA):
+    #     birthdayUK = datetime.strptime(birthdayUSA, '%Y-%m-%d').strftime('%d-%m-%Y')
+    #     return birthdayUK
 
     def calculate_age(self, strbirthday):
         birthday = datetime.strptime(strbirthday, '%d-%m-%Y')
@@ -89,20 +82,36 @@ class Person_Details:
         else:
             return f"https://www.instagram.com/{insta_id}"
 
-    def __init__(self, **kwargs):
-        self.name = kwargs["name"]
-        self.biography = kwargs["biography"]
-        self.birthday = self.age_format(kwargs["birthday"])
-        self.deathday = kwargs["deathday"]
-        self.birthplace = kwargs["birthplace"]
-        self.known = kwargs["known"]
-        self.imdb = str(self.base_imdb_URL + kwargs["imdb_id"])
-        self.popularity = kwargs["popularity"]
-        self.image = self.base_image_URL + kwargs["profile_path"]
-        self.gender = self.gender_convert(kwargs["gender"])
-        self.age = self.calculate_age(self.birthday)
-        self.facebook = self.facebook_url(kwargs["facebook"])
-        self.instagram = self.instagram_url(kwargs["instagram"])
+    def __init__(self, df):
+        self.df = df
+        self.name = df["name"]
+        self.biography = df["biography"]
+        # self.birthday = self.age_format(df["birthday"])
+        self.deathday = df["deathday"]
+        self.birthplace = df["place_of_birth"]
+        # self.known = df["known_for"]
+        self.imdb = str(self.base_imdb_URL + df["imdb_id"])
+        self.popularity = df["popularity"]
+        self.image = self.base_image_URL + df["profile_path"]
+        self.gender = self.gender_convert(df["gender"])
+        # self.age = self.calculate_age(self.birthday)
+
+
+
+    # def __init__(self, **kwargs):
+    #     self.name = kwargs["name"]
+    #     self.biography = kwargs["biography"]
+    #     self.birthday = self.age_format(kwargs["birthday"])
+    #     self.deathday = kwargs["deathday"]
+    #     self.birthplace = kwargs["birthplace"]
+    #     self.known = kwargs["known"]
+    #     self.imdb = str(self.base_imdb_URL + kwargs["imdb_id"])
+    #     self.popularity = kwargs["popularity"]
+    #     self.image = self.base_image_URL + kwargs["profile_path"]
+    #     self.gender = self.gender_convert(kwargs["gender"])
+    #     self.age = self.calculate_age(self.birthday)
+        # self.facebook = self.facebook_url(kwargs["facebook"])
+        # self.instagram = self.instagram_url(kwargs["instagram"])
         # self.tiktok =
         # self.wiki = 
         # self.twitter =
